@@ -122,11 +122,9 @@ if __name__ == "__main__":
         final = stitchTB(top, bottom, h['final'])
         
         outStore.add_image(final, f, t)
-<<<<<<< HEAD
+
     outStore.close()
-=======
-    
->>>>>>> 955ab2b6c17676546eacbeb7b8081df7f4f070f7
+
     print "Done."
     
     """

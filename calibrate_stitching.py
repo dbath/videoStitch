@@ -13,7 +13,6 @@ a stitched image
 import numpy as np
 import imutils
 import cv2
-<<<<<<< HEAD
 from homography import Stitcher
 import yaml
 from utilities import *
@@ -35,14 +34,6 @@ def sbs(imglist, axes_off=False):
             plt.axis('off')
     plt.show()
     return
-=======
-from videoStitch.homography import Stitcher
-import yaml
-from utilities import *
-from PIL import Image
-
-
->>>>>>> 955ab2b6c17676546eacbeb7b8081df7f4f070f7
 
 def doit_with_opencv(VIDS, N=7):
     #CALCULATE HOMOGRAPHY
@@ -90,7 +81,6 @@ def calculate_stitching(VIDS, ITER):
         return 0    
 
 
-<<<<<<< HEAD
 
 def manual_imglist(myString):
     imgs = []
@@ -190,8 +180,6 @@ def getCorners(img):
         coords[abs(coords - dim) < 4.0] = dim
     return coords
         
-=======
->>>>>>> 955ab2b6c17676546eacbeb7b8081df7f4f070f7
   
 if __name__ == "__main__":
     import argparse
@@ -200,21 +188,13 @@ if __name__ == "__main__":
     parser.add_argument('--dir', type=str, required=False, default='/media/recnodes/recnode_2mfish/', help='path to videos')
     parser.add_argument('--handle', type=str, required=False, default='',
                                     help='unique catchall for videos to be stitched. timestamp works well')
-<<<<<<< HEAD
     parser.add_argument('--saveas', type=str, required=False, default='notAssigned', help='output filename')
-=======
-    #parser.add_argument('--saveas', type=str, required=False, default='notAssigned', help='output filename')
->>>>>>> 955ab2b6c17676546eacbeb7b8081df7f4f070f7
     args = parser.parse_args()
     
     #SEARCH_FILES = '/media/recnodes/recnode_2mfish/stitch10000_20180503_160717/undistorted/stitch*'
     SEARCH_FILES = slashdir(args.dir) + '*' +  args.handle + '*undistorted'
     
-<<<<<<< HEAD
     """
-=======
-
->>>>>>> 955ab2b6c17676546eacbeb7b8081df7f4f070f7
     #Camera orientations before renovation:
     [tl, bl, tr, br] = ['21990445',
                         '21990447',
@@ -222,13 +202,8 @@ if __name__ == "__main__":
                         '21990443']
     """
     #Camera orientations after renovation (August 2018):
-<<<<<<< HEAD
      #Current settings as of 180827
     [tr, br, tl, bl] = ['21990447',
-=======
-    """ #Current settings as of 180827
-    [tl, bl, tr, br] = ['21990447',
->>>>>>> 955ab2b6c17676546eacbeb7b8081df7f4f070f7
                         '21990449',
                         '21990443',
                         '21990445']
