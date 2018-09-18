@@ -15,13 +15,15 @@ class Stitcher:
         
 
     def getHomography(self, images, orientation, ratio=0.75, reprojThresh=4.0,
-        showMatches=False):
+        showMatches=False, method='Perspective'):
         # unpack the images, then detect keypoints and extract
         # local invariant descriptors from them
         (imageB, imageA) = images
         (kpsA, featuresA) = self.detectAndDescribe(imageA)
         (kpsB, featuresB) = self.detectAndDescribe(imageB)
-
+       
+             
+       
         # match features between the two images
         M = self.matchKeypoints(kpsA, kpsB,
             featuresA, featuresB, ratio, reprojThresh)
@@ -30,7 +32,6 @@ class Stitcher:
         # keypoints to create a panorama
         if M is None:
             return (0,0), None
-
         # otherwise, apply a perspective warp to stitch the images
         # together
         (matches, H, status) = M
@@ -40,7 +41,13 @@ class Stitcher:
         elif orientation == 'vertical':
             result = cv2.warpPerspective(imageA, H, (imageA.shape[1], imageA.shape[0] + imageB.shape[0]))
             result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
-
+        elif orientation == 'diagonal':
+            result = cv2.warpPerspective(imageA, H, (imageA.shape[1] + imageB.shape[1], imageA.shape[0] + imageB.shape[0]))
+            result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
+        elif orientation == 'centre':
+            result = cv2.warpPerspective(imageA, H, (4096, 4096))
+            #result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
+        
 	    # check to see if the keypoint matches should be visualized
         if showMatches:
             vis = self.drawMatches(imageA, imageB, kpsA, kpsB, matches,
@@ -48,14 +55,15 @@ class Stitcher:
 
             # return a tuple of the stitched image and the
             # visualization
-            return (result, vis), M
+            return (result, vis), H, result.shape
 
         # return the stitched image
-        return result, M
+        return result, H, result.shape
 
     def detectAndDescribe(self, image):
 	    # convert the image to grayscale
-	    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+	    if len(image.shape) ==3:
+	        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 	    # check to see if we are using OpenCV 3.X
 	    if self.isv3:
@@ -67,11 +75,11 @@ class Stitcher:
 	    else:
 		    # detect keypoints in the image
 		    detector = cv2.FeatureDetector_create("SIFT")
-		    kps = detector.detect(gray)
+		    kps = detector.detect(image)
 
 		    # extract features from the image
 		    extractor = cv2.DescriptorExtractor_create("SIFT")
-		    (kps, features) = extractor.compute(gray, kps)
+		    (kps, features) = extractor.compute(image, kps)
 
 	    # convert the keypoints from KeyPoint objects to NumPy
 	    # arrays

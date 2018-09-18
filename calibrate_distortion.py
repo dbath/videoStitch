@@ -15,18 +15,20 @@ import cv2
 import yaml
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import imgstore
+import random
 
 
 def showFeatures(img, df, fn):
-     plt.imshow(img)
+    plt.imshow(img)
 
-     plt.scatter(df['x'], df['y'], color='r', s=2)
-     if fn == 'nosave':
+    plt.scatter(df['x'], df['y'], color='r', s=1)
+    plt.axis('off')
+    if fn == 'nosave':
         plt.show()
-     else:
+    else:
         plt.savefig(fn, layout='Tight')
-     return
+    return
 
 def coords(a):
     # where a is a cornerSubPix Array
@@ -61,51 +63,54 @@ def calibrate(store, CHECKERSHAPE, DESTFILE):
     imgpoints = [] # 2d points in image plane.
 
 
-    
     found = 0
     errorcount = 0
-    while (found < 90):  #  can be changed to whatever number you like to choose
-    
-        img, (framenum, timestamp) = store.get_next_frame()
-        
-        if framenume%3 ==0: #every nth frame
+    FRAME_NUMBERS = store.get_frame_metadata()['frame_number']
+    random.shuffle(FRAME_NUMBERS)
+    #while (found <= 50):  #  can be changed to whatever number you like to choose
+    for k in FRAME_NUMBERS:
+        if found > 100:
+            break
+        else:
             try:
-                gray = img[:,:,0]
+                img, (framenum, timestamp) = store.get_image(k)
+            except:
+                img, (framenum, timestamp) = store.get_next_image()
+            try:
 
                 # Find the chess board corners
-                ret, corners = cv2.findChessboardCorners(gray, checkerShape,None)
-
+                ret, corners = cv2.findChessboardCorners(img, checkerShape,None)
                 #
                 # If found, add object points, image points (after refining them)
                 if ret == True:
                     objpoints.append(objp)   # Certainly, every loop objp is the same, in 3D.
-                    corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+                    corners2 = cv2.cornerSubPix(img,corners,checkerShape,(5,5),criteria)
                     imgpoints.append(corners2)
                     found += 1
                     lastImg = img
                     #showFeatures(img, pd.DataFrame(getPointsList(corners2) ,columns=['x','y']), 'nosave')
             except:
                 errorcount +=1
-                if errorcount > 100:
+                if errorcount > 200:
                     print "Could not generate full calibration file: ", DESTFILE.split('/')[-1]
                     break            
-    
+            
                 
     df = pd.concat([getPointsList(imgpoints[x]) for x in range(len(imgpoints))])
     df.columns = ['x','y']
-    df.to_pickle(store.filename + '/imgPoints.pickle')
 
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img.shape[::-1], None, None)
 
     # It's very important to transform the matrix to list.
 
     data = {'camera_matrix': np.asarray(mtx).tolist(), 'dist_coeff': np.asarray(dist).tolist()}
 
-    showFeatures(lastImg, df, store.filename + '/featureList.png')
     
     with open(DESTFILE, "w") as f:
         yaml.dump(data, f)
-        
+    
+    df.to_pickle(store.filename + '/imgPoints.pickle')
+    showFeatures(lastImg, df, store.filename + '/featureList.png')    
     print 'Calibration complete: ', DESTFILE.split('/')[-1]
 
     
@@ -124,8 +129,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--dir', type=str, required=False, default='/media/recnodes/recnode_2mfish/',
 			 help='path to directory containing checker vids')
-    parser.add_argument('--timestamp', type=str, required=True, help='unique identifier that marks the files to use for calibration. Ideally use the timestamp of the recording, ie "20180808_153229".'
-    parser.add_argument('--checkersize', type=str, required=False, default='6x6', help='size of checkerboard, default is 6x6')
+    parser.add_argument('--handle', type=str, required=True, help='unique identifier that marks the files to use for calibration. Ideally use the timestamp of the recording, ie "20180808_153229".')
+    parser.add_argument('--checkersize', type=str, required=False, default='12x12', help='size of checkerboard, default is 11x11')
     parser.add_argument('--saveas', type=str, required=False, default='notDefined', help='name for calibration, including date time string, ex: 20180404_123456')
 
                 
@@ -138,12 +143,12 @@ if __name__ == "__main__":
     
         if args.saveas == 'notDefined':
             DATETIME = '_'.join(vid.split('/')[-2].split('.')[0].rsplit('_',2)[1:])
-            SERIAL = vid.split('.')[-2].split('/')[0]
+            SERIAL = inStore.user_metadata['camera_serial']
             SAVE_AS = '_'.join([DATETIME,SERIAL])
         else:
             SAVE_AS = '_'.join([args.saveas, vid.split('.')[-2]])
-
-        calibrate(inStore, CHECKERSIZE, '/home/dan/fishMAD/camera_calibrations/'+SAVE_AS+'.yaml') 
+        print SAVE_AS
+        calibrate(inStore, CHECKERSIZE, '/home/dan/videoStitch/calibrations/distortion/'+SAVE_AS+'.yaml') 
 
 
 

@@ -25,7 +25,7 @@ class Undistort:
         self.vidfile = store.filename
         self.video_timestamp = '_'.join(self.vidfile.split('/')[-1].split('.')[0].rsplit('_',2)[1:])
         self.startTime = getTimeFromTimeString(self.video_timestamp)
-        self.camSerial = store.filename.split('.')[1]
+        self.camSerial = store.user_metadata['camera_serial']
         self.calibrationFile = self.selectCalibrationFile()
         
         k, d = self.loadCameraConfig(self.calibrationFile)
@@ -33,7 +33,7 @@ class Undistort:
         self.cameraMatrix = np.array(k) #UMAT
         self.cameraDistortion = np.array(d) #UMAT
         
-        print "\nDewarping video: ", self.vidfile, "using calibration: ", self.calibrationFile
+        print "\nDewarping video: ", self.vidfile, "\n\tusing calibration: ", self.calibrationFile
         
         return
     
@@ -44,13 +44,13 @@ class Undistort:
         """
         fileList = []
         times = []
-        for x in glob.glob('/home/dan/fishMAD/camera_calibrations/*.yaml'):
+        for x in glob.glob('/home/dan/videoStitch/calibrations/distortion/*' + self.camSerial + '.yaml'):
             fileList.append(x)
             times.append(getTimeFromTimeString(x.split('/')[-1].split('.')[0].rsplit('_',1)[0]))
         df = pd.DataFrame({'filename':fileList, 'times':times})
-        calTime = df[df.times < self.startTime].max()['filename'].split('/')[-1].rsplit('_',1)[0]
+        calTime = df[df.times <= self.startTime].max()['filename'].split('/')[-1].rsplit('_',1)[0]
         
-        return '/home/dan/fishMAD/camera_calibrations/' + calTime + '_' + self.camSerial + '.yaml'
+        return '/home/dan/videoStitch/calibrations/distortion/' + calTime + '_' + self.camSerial + '.yaml'
         
     def loadCameraConfig(self, CALIBRATION):
         with open(CALIBRATION) as f:
@@ -79,7 +79,7 @@ def doit(DIR, HANDLE):
         if os.path.exists(newdir):
             shutil.rmtree(newdir)
         os.mkdir(newdir)
-        outStore = imgstore.new_for_format('jpg', mode='w', 
+        outStore = imgstore.new_for_format( 'avc1/mp4', mode='w', 
                     basedir=newdir, 
                     imgshape=img.shape, 
                     imgdtype=img.dtype,
@@ -91,7 +91,7 @@ def doit(DIR, HANDLE):
                 img, (frame_number, frame_timestamp) = inStore.get_next_image()
             except:
                 print "failed at frame: ", i , "of", inStore.frame_count, inStore.frame_max   
-   
+        outStore.close()
     return    
 
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         if os.path.exists(newdir):
             shutil.rmtree(newdir)
         os.mkdir(newdir)
-        outStore = imgstore.new_for_format('jpg', mode='w', 
+        outStore = imgstore.new_for_format( 'avc1/mp4', mode='w', 
                     basedir=newdir, 
                     imgshape=inStore.image_shape, 
                     imgdtype='uint8',
@@ -124,7 +124,7 @@ if __name__ == "__main__":
             except:
                 print "failed at frame: ", i , "of", inStore.frame_count, inStore.frame_max   
     
-    
+        outStore.close()
           
             
             
