@@ -15,7 +15,7 @@ class Stitcher:
         
 
     def getHomography(self, images, orientation, ratio=0.75, reprojThresh=4.0,
-        shoDwMatches=False, method='Perspective'):
+        showMatches=False, method='Perspective'):
 
         # unpack the images, then detect keypoints and extract
         # local invariant descriptors from them

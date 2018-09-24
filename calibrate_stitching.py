@@ -35,49 +35,74 @@ def sbs(imglist, axes_off=False):
     plt.show()
     return
 
-def doit_with_opencv(VIDS, N=7):
-    #CALCULATE HOMOGRAPHY
-    imgs = []
-    for v in VIDS:               
-        v.set(1,N)
-        ret, i = v.read()
-        if ret:
-            imgs.append(i)
-        else:
-            break
-    stitcher = Stitcher()
-    (top, top_vis), Mtop = stitcher.getHomography([imgs[0],imgs[2]], 'horizontal', showMatches=True)
-    (bot, bot_vis), Mbot = stitcher.getHomography([imgs[1],imgs[3]], 'horizontal', showMatches=True) 
-    (result, vis), Mtotal = stitcher.getHomography([top,bot], 'vertical', showMatches=True) 
+def rotateAndWarp(warp, warpto, rotateCode='norotation'):
+    if len(warp.shape) == 2:
+        warp = cv2.cvtColor(warp, cv2.COLOR_GRAY2BGRA)
+    elif warp.shape[2] == 3:
+        warp = cv2.cvtColor(warp, cv2.COLOR_BGR2BGRA)
+    if len(warpto.shape) == 2:
+        warpto = cv2.cvtColor(warpto, cv2.COLOR_GRAY2BGRA)
+    elif warpto.shape[2] == 3:
+        warpto = cv2.cvtColor(warpto, cv2.COLOR_BGR2BGRA)
     
-    if not None in [Mtop, Mbot, Mtotal]:
-        H = {'topRow':Mtop[1], 'bottomRow': Mbot[1], 'final':Mtotal[1]}
-        with open(SAVEAS + '.yml', 'w') as outfile:
-            yaml.dump(H, outfile, default_flow_style=False)
-        Image.fromarray(result).save(SAVEAS+'.png')
-    return H
-
+    if not rotateCode == 'norotation':
+        warp = cv2.rotate(warp, rotateCode)
+        warpto = cv2.rotate(warpto, rotateCode)
+    
+    (kpsC, featuresC) = detectAndDescribe(warpto)
+    (kpsBR, featuresBR) = detectAndDescribe(warp) 
+    (matches, H, status) = matchKeypoints(kpsBR, kpsC, featuresBR, featuresC, 0.75,4.0)
+    SHAPE = (warp.shape[1] + warpto.shape[1], warp.shape[0]+warpto.shape[0])
+    result = cv2.warpPerspective(warp, H, SHAPE) 
+    
+    #result[0:warpto.shape[0], 0:warpto.shape[1]] = warpto   
+    if rotateCode == cv2.ROTATE_180:
+        result = cv2.rotate(result, cv2.ROTATE_180)
+    elif rotateCode == cv2.ROTATE_90_CLOCKWISE:
+        result = cv2.rotate(result, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    elif rotateCode == cv2.ROTATE_90_COUNTERCLOCKWISE:
+        result = cv2.rotate(result, cv2.ROTATE_90_CLOCKWISE)
+        
+    return result, H, SHAPE
 
 def calculate_stitching(VIDS, ITER):
     
     imgs = []
     
     for v in VIDS:
-        img, (f, t) = v.get_next_frame()
+        img, (f, t) = v.get_next_image()
         imgs.append(img)
+
+
+    #resize centre image to approximately match corner vids
+    small = cv2.resize(imgs[4], (int(imgs[4].shape[1]/3.0), int(imgs[4].shape[0]/3.0)))
+
+    (kpsC, featuresC) = detectAndDescribe(small)
+
+    #warp each image to the centre plane
+    Rtl, Htl, ShapeTL = rotateAndWarp(imgs[0], small, cv2.ROTATE_180)
+    Rbl, Hbl, ShapeBL = rotateAndWarp(imgs[1], small, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    Rtr, Htr, ShapeTR = rotateAndWarp(imgs[2], small, cv2.ROTATE_90_CLOCKWISE)
+    Rbr, Hbr, ShapeBR = rotateAndWarp(imgs[3], small)
+
     
     stitcher = Stitcher()
-    (top, top_vis), Mtop = stitcher.getHomography([imgs[0],imgs[2]], 'horizontal', showMatches=True)
-    (bot, bot_vis), Mbot = stitcher.getHomography([imgs[1],imgs[3]], 'horizontal', showMatches=True) 
-    (result, vis), Mtotal = stitcher.getHomography([top,bot], 'vertical', showMatches=True) 
+
+    top, Htop, topShape, topROI = getStitch(Rtr, Rtl, 'horizontal')
+    bot, Hbot, botShape, botROI = getStitch(Rbr, Rbl, 'horizontal') 
     
-    if not None in [Mtop, Mbot, Mtotal]:
-        H = {'topRow':Mtop[1], 'bottomRow': Mbot[1], 'final':Mtotal[1]}
-        with open(SAVEAS + '_' + str(ITER) +'.yml', 'w') as outfile:
+    #result, Mtotal, TotalShape = stitcher.getHomography([top,bot], 'vertical', showMatches=False) 
+    result, Htotal, finalShape, ROI = getStitch(bot, top, 'vertical')
+    
+    try:
+        H = {'topRow':Htop, 'bottomRow': Hbot, 'final':Htotal, 'ROI' : ROI,
+              'topShape':topShape, 'botShape':botShape, 'finalShape':finalShape}
+        with open(SAVEAS + '_' + str(ITER) +'.yml', "w") as outfile:
             yaml.dump(H, outfile, default_flow_style=False)
+        result = result[ROI[0]:ROI[1],ROI[2]:ROI[3]]
         Image.fromarray(result).save(SAVEAS+'_' + str(ITER) +'.png')
         return H
-    else:
+    except:
         return 0    
 
 
@@ -152,6 +177,31 @@ def four_point_transform(image, pts):
 	return warped
 
 
+def getStitch(WARP, WARPTO, DIRECTION):
+    MAP, H, shape = stitcher.getHomography([WARPTO, WARP], DIRECTION)
+    res = cv2.warpPerspective(WARP, H, (MAP.shape[1],MAP.shape[0]))
+    cop = res.copy() 
+    cop[0:WARPTO.shape[0], 0:WARPTO.shape[1]] = WARPTO
+    res = np.maximum(res, cop)
+    res = res.astype(np.uint8)
+    #CROP:
+    (y, x) = res[:,:,3].nonzero()
+    ROI = (y.min(), y.max(), x.min(), x.max())
+    return res, H, shape, ROI
+
+
+
+def stitch(WARP, WARPTO, shape, H, ROI=None):
+    res = cv2.warpPerspective(WARP, H, (shape[1], shape[0]))
+    cop = res.copy() 
+    cop[0:WARPTO.shape[0], 0:WARPTO.shape[1]] = WARPTO
+    res = np.maximum(res, cop)
+    res = res.astype(np.uint8)
+    if ROI != None:
+        return res[ROI[0]:ROI[1], ROI[2]:ROI[3]]
+    else:    
+        return res
+
 
 
 def getCorners(img):
@@ -203,10 +253,11 @@ if __name__ == "__main__":
     """
     #Camera orientations after renovation (August 2018):
      #Current settings as of 180827
-    [tr, br, tl, bl] = ['21990447',
+    [tr, br, tl, bl, centre] = ['21990447',
                         '21990449',
                         '21990443',
-                        '21990445']
+                        '21990445',
+                        '40012623']
 
     
     
@@ -221,15 +272,17 @@ if __name__ == "__main__":
             BOTTOM_LEFT = imgstore.new_for_filename(x+'/metadata.yaml')
         elif tr in ID:
             TOP_RIGHT = imgstore.new_for_filename(x+'/metadata.yaml')
+        elif centre in ID:
+            CENTRE = imgstore.new_for_filename(x+'/metadata.yaml')
             
-    VIDEOS = [TOP_LEFT, BOTTOM_LEFT, TOP_RIGHT, BOTTOM_RIGHT]
+    VIDEOS = [TOP_LEFT, BOTTOM_LEFT, TOP_RIGHT, BOTTOM_RIGHT, CENTRE]
 
 
     if args.saveas == 'notAssigned':
         ts = '_'.join(TOP_LEFT.filename.split('/')[-1].split('.')[0].split('_')[-2:])
-        SAVEAS = '/home/dan/videoStitch/calibration/homography/homography_' + ts
+        SAVEAS = '/home/dan/videoStitch/calibrations/homography/homography_' + ts
     else:
-        SAVEAS = '/home/dan/videoStitch/calibration/homography/' + args.saveas
+        SAVEAS = '/home/dan/videoStitch/calibrations/homography/' + args.saveas
        
 
     
