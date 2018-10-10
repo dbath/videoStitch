@@ -90,8 +90,10 @@ def calculate_stitching(VIDS, ITER):
 
     top, Htop, topShape, topROI = getStitch(Rtr, Rtl, 'horizontal')
     bot, Hbot, botShape, botROI = getStitch(Rbr, Rbl, 'horizontal') 
+    # I GUESS I NEED TO UNDISTORT TOP AND BOTTOM HERE. UGHHHHHHH>
     
-    #result, Mtotal, TotalShape = stitcher.getHomography([top,bot], 'vertical', showMatches=False) 
+    
+    #FINAL STITCH
     result, Htotal, finalShape, ROI = getStitch(bot, top, 'vertical')
     
     try:

@@ -3,7 +3,7 @@ Generates calibration matrices for undistorting images.
 
 Ideal input is a video, or set of videos, in imgstore format with low framerate (1 or 2Hz) containing checkerboard images. Call the script with a unique identifier that tags only the video or videos to run. This is usually the timestamp of the video recording.
 
-Output is a set of calibration matrices that are saved by default in the fishmad git repository, although save location can be customized.  Image points and a summary figure are also saved in the directory of the input video.
+Output is a set of calibration matrices that are saved by default in the videoStitch git repository, although save location can be customized.  Image points and a summary figure are also saved in the directory of the input video.
 
 D. Bath 2018
 
@@ -99,7 +99,7 @@ def calibrate(store, CHECKERSHAPE, DESTFILE):
     df = pd.concat([getPointsList(imgpoints[x]) for x in range(len(imgpoints))])
     df.columns = ['x','y']
 
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img.shape[::-1], None, None)
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, img.shape[::-1], None, None, flags=cv2.CALIB_RATIONAL_MODEL)
 
     # It's very important to transform the matrix to list.
 
