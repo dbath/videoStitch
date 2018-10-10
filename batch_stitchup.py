@@ -4,6 +4,7 @@ import re
 import cv2
 import numpy as np
 
+import imgstore
 from imgstore import new_for_filename, new_for_format
 from imgstore.util import ensure_color
 
@@ -92,11 +93,19 @@ def create_stitched_video_from_undistorted(fnString):
 
     aligned = StoreAligner(*sorted_stores)
     aligned.extract_common_frames(StoreAligner.MISSING_POLICY_DROP)
-    os.makedir('/media/recnodes/recnode_2mfish/' + fnString + '.stitched')
-    out = new_for_format('png', '/media/recnodes/recnode_2mfish/' + fnString + '.stitched/metadata.yaml',
+    if not os.path.exists('/media/recnodes/recnode_2mfish/' + fnString + '.stitched'):
+        os.mkdir('/media/recnodes/recnode_2mfish/' + fnString + '.stitched')
+    """
+    out = new_for_format('avc1/mp4', '/media/recnodes/recnode_2mfish/' + fnString + '.stitched/metadata.yaml',
                          imgshape=s.panorama_shape,
                          imgdtype=np.uint8)
+    """
+    out = imgstore.new_for_format( 'avc1/mp4', mode='w', 
 
+                basedir='/media/recnodes/recnode_2mfish/' + fnString,
+                imgshape=s.panorama_shape,
+                imgdtype='uint8',
+                chunksize=500)
     for n, (fn, imgs) in enumerate(aligned.iter_imgs()):
 
         ok, img = s.stitch_images(*[ensure_color(i) for i in imgs])
