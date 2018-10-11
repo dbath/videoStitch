@@ -10,6 +10,7 @@ from imgstore.util import ensure_color
 
 from stitchup import Stitcher, StoreAligner, new_window
 
+from undistort import Undistort
 
 def get_store_camera_serial(store):
     try:
@@ -74,7 +75,6 @@ s.enable_blending('feather', 1)
 
 BASE_DATA = '/media/recnodes/recnode_2mfish/'
 
-
 def create_stitched_video_from_undistorted(fnString):
 
 
@@ -90,7 +90,7 @@ def create_stitched_video_from_undistorted(fnString):
         cams_stores[get_store_camera_serial(store)] = store    
 
     sorted_stores = [cams_stores[i] for i in best_order]
-
+    
     aligned = StoreAligner(*sorted_stores)
     aligned.extract_common_frames(StoreAligner.MISSING_POLICY_DROP)
     if not os.path.exists('/media/recnodes/recnode_2mfish/' + fnString + '.stitched'):
@@ -107,8 +107,65 @@ def create_stitched_video_from_undistorted(fnString):
                 imgdtype='uint8',
                 chunksize=500)
     for n, (fn, imgs) in enumerate(aligned.iter_imgs()):
-
+        
+        
         ok, img = s.stitch_images(*[ensure_color(i) for i in imgs])
+        assert ok
+        # #print dat
+        #cv2.imshow('panorama', img)
+        #cv2.waitKey(1)
+
+        out.add_image(img, fn, 0)
+
+        #if n > 10:
+        #    break
+        
+        print n
+    out.close()
+    
+    return
+
+
+def create_stitched_video_from_scratch(fnString):
+
+
+    stores = (fnString + '.21990443',
+              fnString + '.21990445',
+              fnString + '.21990447',
+              fnString + '.21990449')
+
+    cams_stores = {}
+    for fn in stores:
+        store = new_for_filename(op.join(BASE_DATA, fn))
+        print store.full_path
+        cams_stores[get_store_camera_serial(store)] = store    
+
+    sorted_stores = [cams_stores[i] for i in best_order]
+
+    undistortions = [Undistort(i) for i in sorted_stores]
+    
+    aligned = StoreAligner(*sorted_stores)
+    aligned.extract_common_frames(StoreAligner.MISSING_POLICY_DROP)
+    if not os.path.exists('/media/recnodes/recnode_2mfish/' + fnString + '.stitched'):
+        os.mkdir('/media/recnodes/recnode_2mfish/' + fnString + '.stitched')
+    """
+    out = new_for_format('avc1/mp4', '/media/recnodes/recnode_2mfish/' + fnString + '.stitched/metadata.yaml',
+                         imgshape=s.panorama_shape,
+                         imgdtype=np.uint8)
+    """
+    out = imgstore.new_for_format( 'avc1/mp4', mode='w', 
+
+                basedir='/media/recnodes/recnode_2mfish/' + fnString,
+                imgshape=s.panorama_shape,
+                imgdtype='uint8',
+                chunksize=500)
+    for n, (fn, imgs) in enumerate(aligned.iter_imgs()):
+        
+        _imgs = []
+        for i in  range(len(undistortions)):
+            _imgs.append(undistortions[i].undistort(imgs[i]))
+        
+        ok, img = s.stitch_images(*[ensure_color(i) for i in _imgs])
         assert ok
         # #print dat
         #cv2.imshow('panorama', img)
@@ -138,7 +195,7 @@ if __name__ == "__main__":
       
     args = parser.parse_args()
     
-    create_stitched_video_from_undistorted('coherencetestangular3m_128_dotbot_20181004_141201')
+    create_stitched_video_from_scratch('coherencetestangular3m_128_dotbot_20181004_141201')
     
 
 
