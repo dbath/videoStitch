@@ -96,7 +96,7 @@ def create_stitched_video_from_undistorted(path):
     """
     out = imgstore.new_for_format( 'avc1/mp4', mode='w', 
 
-                basedir=DIRECTORY + fnString,
+                basedir=DIRECTORY + fnString + '.stitched',
                 imgshape=s.panorama_shape,
                 imgdtype='uint8',
                 chunksize=500)
@@ -145,7 +145,7 @@ def create_stitched_video_from_scratch(path):
     """
     out = imgstore.new_for_format( 'avc1/mp4', mode='w', 
 
-                basedir=DIRECTORY + fnString,
+                basedir=DIRECTORY + fnString + '.stitched',
                 imgshape=s.panorama_shape,
                 imgdtype='uint8',
                 chunksize=500)
@@ -158,7 +158,7 @@ def create_stitched_video_from_scratch(path):
         ok, img = s.stitch_images(*[ensure_color(i) for i in _imgs])
         assert ok
 
-        out.add_image(img, fn, 0)
+        out.add_image(img, fn, ts)
 
     out.close()
     
@@ -185,11 +185,12 @@ if __name__ == "__main__":
             
     for term in HANDLE:
         for DIR in DIRECTORIES:
-            for vDir in glob.glob(DIR + '*' + term + '*'):  
+            for vDir in glob.glob(DIR + '*' + term + '*.21990443'):  
                 if "undistorted" in vDir:
-                    create_stitched_video_from_undistorted(vDir)
+                    continue #FIXME
+                    create_stitched_video_from_undistorted(vDir.rsplit('.',1)[0])
                 else:
-                    create_stitched_video_from_scratch(vDir)
+                    create_stitched_video_from_scratch(vDir.rsplit('.',1)[0])
 
 
 
