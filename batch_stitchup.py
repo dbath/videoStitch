@@ -49,13 +49,6 @@ s = Stitcher(use_gpu=True,
              matcher_type="affine",
              warp_type="plane")
 
-if TESTING:
-    IN = '/mnt/storage/dan_stitch_many/stitch09_undistorted_2/'
-    TL = IN + 'stitch09_20180910_165817.21990443_undistorted_png/000000/000000.png'
-    TR = IN + 'stitch09_20180910_165817.21990447_undistorted_png/000000/000000.png'
-    BL = IN + 'stitch09_20180910_165817.21990445_undistorted_png/000000/000000.png'
-    BR = IN + 'stitch09_20180910_165817.21990449_undistorted_png/000000/000000.png'
-    sorted_imgs = [cv2.imread(TL), cv2.imread(TR), cv2.imread(BL), cv2.imread(BR)]
 
 # s.enable_exposure_compensation('gain_blocks')
 # s.enable_seam_finding('gc_color')
@@ -63,7 +56,7 @@ if TESTING:
 ok = s.load_calibration(*sorted_imgs)
 assert ok
 
-new_window('panorama', shape=s.panorama_shape)
+#new_window('panorama', shape=s.panorama_shape)
 
 if TESTING:
     ok, img = s.stitch_images(*sorted_imgs)
@@ -75,9 +68,10 @@ s.enable_blending('feather', 1)
 
 BASE_DATA = '/media/recnodes/recnode_2mfish/'
 
-def create_stitched_video_from_undistorted(fnString):
+def create_stitched_video_from_undistorted(path):
 
-
+    DIRECTORY, fnString = path.rsplit('/',1)
+    DIRECTORY = DIRECTORY + '/'
     stores = (fnString + '.21990443_undistorted',
               fnString + '.21990445_undistorted',
               fnString + '.21990447_undistorted',
@@ -93,42 +87,38 @@ def create_stitched_video_from_undistorted(fnString):
     
     aligned = StoreAligner(*sorted_stores)
     aligned.extract_common_frames(StoreAligner.MISSING_POLICY_DROP)
-    if not os.path.exists('/media/recnodes/recnode_2mfish/' + fnString + '.stitched'):
-        os.mkdir('/media/recnodes/recnode_2mfish/' + fnString + '.stitched')
+    if not os.path.exists(DIRECTORY + fnString + '.stitched'):
+        os.mkdir(DIRECTORY + fnString + '.stitched')
     """
-    out = new_for_format('avc1/mp4', '/media/recnodes/recnode_2mfish/' + fnString + '.stitched/metadata.yaml',
+    out = new_for_format('avc1/mp4', DIRECTORY + fnString + '.stitched/metadata.yaml',
                          imgshape=s.panorama_shape,
                          imgdtype=np.uint8)
     """
     out = imgstore.new_for_format( 'avc1/mp4', mode='w', 
 
-                basedir='/media/recnodes/recnode_2mfish/' + fnString,
+                basedir=DIRECTORY + fnString,
                 imgshape=s.panorama_shape,
                 imgdtype='uint8',
                 chunksize=500)
-    for n, (fn, imgs) in enumerate(aligned.iter_imgs()):
+    for n, (imgs, (fn, ts)) in enumerate(aligned.iter_imgs(return_times=True)):
         
         
         ok, img = s.stitch_images(*[ensure_color(i) for i in imgs])
         assert ok
-        # #print dat
-        #cv2.imshow('panorama', img)
-        #cv2.waitKey(1)
 
-        out.add_image(img, fn, 0)
 
-        #if n > 10:
-        #    break
-        
+        out.add_image(img, fn, ts)
+
         print n
     out.close()
     
     return
 
 
-def create_stitched_video_from_scratch(fnString):
+def create_stitched_video_from_scratch(path):
 
-
+    DIRECTORY, fnString = path.rsplit('/',1)
+    DIRECTORY = DIRECTORY + '/'
     stores = (fnString + '.21990443',
               fnString + '.21990445',
               fnString + '.21990447',
@@ -146,20 +136,20 @@ def create_stitched_video_from_scratch(fnString):
     
     aligned = StoreAligner(*sorted_stores)
     aligned.extract_common_frames(StoreAligner.MISSING_POLICY_DROP)
-    if not os.path.exists('/media/recnodes/recnode_2mfish/' + fnString + '.stitched'):
-        os.mkdir('/media/recnodes/recnode_2mfish/' + fnString + '.stitched')
+    if not os.path.exists(DIRECTORY + fnString + '.stitched'):
+        os.mkdir(DIRECTORY + fnString + '.stitched')
     """
-    out = new_for_format('avc1/mp4', '/media/recnodes/recnode_2mfish/' + fnString + '.stitched/metadata.yaml',
+    out = new_for_format('avc1/mp4', DIRECTORY + fnString + '.stitched/metadata.yaml',
                          imgshape=s.panorama_shape,
                          imgdtype=np.uint8)
     """
     out = imgstore.new_for_format( 'avc1/mp4', mode='w', 
 
-                basedir='/media/recnodes/recnode_2mfish/' + fnString,
+                basedir=DIRECTORY + fnString,
                 imgshape=s.panorama_shape,
                 imgdtype='uint8',
                 chunksize=500)
-    for n, (fn, imgs) in enumerate(aligned.iter_imgs()):
+    for n, (imgs, (fn, ts)) in enumerate(aligned.iter_imgs(return_times=True)):
         
         _imgs = []
         for i in  range(len(undistortions)):
@@ -167,16 +157,9 @@ def create_stitched_video_from_scratch(fnString):
         
         ok, img = s.stitch_images(*[ensure_color(i) for i in _imgs])
         assert ok
-        # #print dat
-        #cv2.imshow('panorama', img)
-        #cv2.waitKey(1)
 
         out.add_image(img, fn, 0)
 
-        #if n > 10:
-        #    break
-        
-        print n
     out.close()
     
     return
@@ -194,9 +177,19 @@ if __name__ == "__main__":
     parser.add_argument('--handle', type=str, required=True, help='unique identifier that marks the files to use for calibration. Ideally use the timestamp of the recording, ie "20180808_153229".')
       
     args = parser.parse_args()
-    
-    create_stitched_video_from_scratch('coherencetestangular3m_128_dotbot_20181004_141201')
-    
+    HANDLE = args.handle.split(',')
+    DIRECTORIES = args.dir.split(',')
+    for x in range(len(DIRECTORIES)):
+        if DIRECTORIES[x][-1] != '/':
+            DIRECTORIES[x] += '/'
+            
+    for term in HANDLE:
+        for DIR in DIRECTORIES:
+            for vDir in glob.glob(DIR + '*' + term + '*'):  
+                if "undistorted" in vDir:
+                    create_stitched_video_from_undistorted(vDir)
+                else:
+                    create_stitched_video_from_scratch(vDir)
 
 
 
