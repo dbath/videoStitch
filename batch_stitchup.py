@@ -64,7 +64,7 @@ if TESTING:
     cv2.waitKey(0)
     raise SystemExit
 
-s.enable_blending('feather', 1)
+#s.enable_blending('feather', 1)
 
 BASE_DATA = '/media/recnodes/recnode_2mfish/'
 
@@ -185,12 +185,12 @@ if __name__ == "__main__":
             
     for term in HANDLE:
         for DIR in DIRECTORIES:
-            for vDir in glob.glob(DIR + '*' + term + '*.21990443'):  
-                if "undistorted" in vDir:
+            for vDir in glob.glob(DIR + '*' + term + '*.21990443'):
+                if os.path.exists(vDir.rsplit('.',1)[0] + '.stitched'):
+                    continue
+                elif "undistorted" in vDir:
                     continue #FIXME
                     create_stitched_video_from_undistorted(vDir.rsplit('.',1)[0])
                 else:
                     create_stitched_video_from_scratch(vDir.rsplit('.',1)[0])
-
-
 
