@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import imgstore
 import random
+import os
 
 
 def showFeatures(img, df, fn):
@@ -67,9 +68,14 @@ def calibrate(store, CHECKERSHAPE, DESTFILE):
     errorcount = 0
     FRAME_NUMBERS = store.get_frame_metadata()['frame_number']
     random.shuffle(FRAME_NUMBERS)
+    TARGET_NFRAMES = 40
+    MAX_ERRORS = 40
+    if store.frame_count < (TARGET_NFRAMES + MAX_ERRORS):
+        TARGET_NFRAMES = store.frame_count / 3
+        MAX_ERRORS = store.frame_count/3
     #while (found <= 50):  #  can be changed to whatever number you like to choose
     for k in FRAME_NUMBERS:
-        if found > 100:
+        if found > TARGET_NFRAMES:
             break
         else:
             try:
@@ -77,7 +83,7 @@ def calibrate(store, CHECKERSHAPE, DESTFILE):
             except:
                 img, (framenum, timestamp) = store.get_next_image()
             try:
-
+                
                 # Find the chess board corners
                 ret, corners = cv2.findChessboardCorners(img, checkerShape,None)
                 #
@@ -91,7 +97,7 @@ def calibrate(store, CHECKERSHAPE, DESTFILE):
                     #showFeatures(img, pd.DataFrame(getPointsList(corners2) ,columns=['x','y']), 'nosave')
             except:
                 errorcount +=1
-                if errorcount > 200:
+                if errorcount > MAX_ERRORS:
                     print "Could not generate full calibration file: ", DESTFILE.split('/')[-1]
                     break            
             
@@ -148,7 +154,7 @@ if __name__ == "__main__":
         else:
             SAVE_AS = '_'.join([args.saveas, vid.split('.')[-2]])
         print SAVE_AS
-        calibrate(inStore, CHECKERSIZE, '/home/dan/videoStitch/calibrations/distortion/'+SAVE_AS+'.yaml') 
+        calibrate(inStore, CHECKERSIZE, os.path.expanduser('~/videoStitch/calibrations/distortion/'+SAVE_AS+'.yaml')) 
 
 
 
