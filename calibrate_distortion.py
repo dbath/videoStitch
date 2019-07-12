@@ -139,6 +139,8 @@ if __name__ == "__main__":
     CHECKERSIZE = tuple([int(k) for k in args.checkersize.split('x')])
 
     for vid in glob.glob(slashdir(args.dir) + '*' + args.handle + '*/metadata.yaml'):
+        if "undistorted" in vid: #skip already processed videos
+            continue
         inStore = imgstore.new_for_filename(vid)    
     
         if args.saveas == 'notDefined':
@@ -146,7 +148,7 @@ if __name__ == "__main__":
             SERIAL = inStore.user_metadata['camera_serial']
             SAVE_AS = '_'.join([DATETIME,SERIAL])
         else:
-            SAVE_AS = '_'.join([args.saveas, vid.split('.')[-2]])
+            SAVE_AS = '_'.join([args.saveas, inStore.user_metadata['camera_serial']])
         print SAVE_AS
         calibrate(inStore, CHECKERSIZE, '/home/dan/videoStitch/calibrations/distortion/'+SAVE_AS+'.yaml') 
 
