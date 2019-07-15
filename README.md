@@ -1,9 +1,11 @@
 # videoStitch
 
+<p align="center">
+  <img src=https://github.com/dbath/videoStitch/blob/master/img.png>
+</p>
+
 
 18/09/2018 - This repository is under construction and is not yet prepared for public distribution. Parameters such as camera serials and file paths are still hard-coded.  Until this repository is finished, issues/bug fix requests may go unanswered. Sorry for the inconvenience and thanks for your understanding. 
-
-
 
 
 # Instructions:
