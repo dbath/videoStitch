@@ -8,5 +8,5 @@ setup(name='videoStitch',
       author='Dan Bath',
       author_email='danbath@gmail.com',
       url='https://www.danbath.ca',
-      py_modules=['undistort','utilities','calibrate'],
+      py_modules=['undistort','utilities','calibrate_stitching','calibrate_distortion'],
      )

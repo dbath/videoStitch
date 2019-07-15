@@ -10,16 +10,22 @@ from utilities import *
 import pandas as pd
 import imgstore
 import functools
+import yaml
+import cv2
+import shutil
+import matplotlib.pyplot as plt
 
 
 
 def stitchRL(imageB,imageA,H):
-    result = cv2.warpPerspective(imageA, H, (imageA.shape[1] + imageB.shape[1], imageA.shape[0]))
+    #stitches imageA (left) to imageB(right) using affine matrix H
+    result = cv2.warpAffine(imageA, H, (imageA.shape[1] + imageB.shape[1], imageA.shape[0]))
     result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
     return result
 
 def stitchTB(imageB,imageA,H):
-    result = cv2.warpPerspective(imageA, H, (imageA.shape[1], imageA.shape[0] + imageB.shape[0]))
+    #stitches imageA (top) to imageB(bottom) using affine matrix H
+    result = cv2.warpAffine(imageA, H, (imageA.shape[1], imageA.shape[0] + imageB.shape[0]))
     result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
     return result
 
@@ -29,7 +35,7 @@ def selectHomographyFile(vidTime):
     times = []
     for x in glob.glob('/home/dan/videoStitch/calibrations/homography/*.yml'):
         fileList.append(x)
-        times.append(getTimeFromTimeString(x.split('/')[-1].split('.')[0].split('_',1)[1]))
+        times.append(getTimeFromTimeString(x.split('/')[-1].split('.')[0]))
     df = pd.DataFrame({'filename':fileList, 'times':times})
     return df[df.times < vidTime].max()['filename']
     
@@ -48,7 +54,7 @@ if __name__ == "__main__":
     SEARCH_FILES = slashdir(args.dir) + '*' +  args.handle + '*_undistorted/metadata.yaml'
 
     """    
-    #Camera orientations before renovation:
+    #Camera orientations before renovation (august 2018):
     [tl, bl, tr, br] = ['21990445',
                         '21990447',
                         '21990449',
@@ -95,8 +101,9 @@ if __name__ == "__main__":
 
     if os.path.exists(SAVEAS):
         shutil.rmtree(SAVEAS)
-    os.mkdir(SAVEAS)
-    outStore = imgstore.new_for_format('jpg', mode='w', 
+    os.mkdir(SAVEAS)        
+
+    outStore = imgstore.new_for_format('avc1/mp4', mode='w', 
                 basedir=SAVEAS, 
                 imgshape=IMG_SHAPE, 
                 imgdtype='uint8',
@@ -106,8 +113,7 @@ if __name__ == "__main__":
     
     common = functools.reduce(np.intersect1d, store_fns)
 
-
-    for i in common:#range(TOP_LEFT.frame_min, TOP_LEFT.frame_max):
+    for i in common:
         imgs = []
         for vid in VIDEOS:
             try:
@@ -116,10 +122,10 @@ if __name__ == "__main__":
                 img, (f, t) = vid.get_next_image()
             
             imgs.append(img)
-        
-        top = stitchRL(imgs[0], imgs[2], h['topRow'])
-        bottom = stitchRL(imgs[1], imgs[3], h['bottomRow'])
-        final = stitchTB(top, bottom, h['final'])
+
+        top = stitchRL(imgs[2], imgs[0], np.array(h['topRow']))
+        bottom = stitchRL(imgs[3], imgs[1], np.array(h['bottomRow']))
+        final = stitchTB(top, bottom, np.array(h['final']))
         
         outStore.add_image(final, f, t)
 
@@ -127,25 +133,7 @@ if __name__ == "__main__":
 
     print "Done."
     
-    """
 
-    while TOP_LEFT.isOpened():
-        framenum = TOP_LEFT.get(1)
-        imgs = []
-        for v in VIDS:               
-            v.set(1,framenum)
-            ret, i = v.read()
-            if ret:
-                imgs.append(i)
-            else:
-                break
-        if len(imgs) != 4:
-            break
-        top = stitchRL(imgs[0], imgs[2], h['topRow'])
-        bottom = stitchRL(imgs[1], imgs[3], h['bottomRow'])
-        final = stitchTB(top, bottom, h['final'])
-
-    """
         
         
         

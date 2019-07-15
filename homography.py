@@ -1,7 +1,7 @@
 """
-The Stitcher class generates homography matrices. Run this class using "imageStitch_calibration.py".
+The Stitcher class generates homography matrices. Run this tool using "calibration_stitching.py".
 
-modified from pyimagesearch panorama.py 2018
+some parts of this class were take from from pyimagesearch panorama.py (2018).  The key modification from the pyImageSearch tool is to use an  affine transform instead of perspective warping. this is a more appropriate transformation for this application
 """
 
 import numpy as np
@@ -35,19 +35,24 @@ class Stitcher:
         # otherwise, apply a perspective warp to stitch the images
         # together
         (matches, H, status) = M
+        
+        # create corresponding triangles for affine transformation
+        src_points = np.float32([[0,0,1], [int(imageA.shape[0]*0.95),5,1], [5, int(imageA.shape[1]*0.95),1]])
+        dst_points = np.array([np.matmul(H, v) for v in src_points] )
+        
+        #convert to 2 x 3 matrices
+        src = cv2.convertPointsFromHomogeneous(src_points).astype(np.float32)
+        dst = cv2.convertPointsFromHomogeneous(dst_points).astype(np.float32)
+        
+        affine_matrix = cv2.getAffineTransform(src[:,0], dst[:,0])
+        
         if orientation == 'horizontal':
-	        result = cv2.warpPerspective(imageA, H, (imageA.shape[1] + imageB.shape[1], imageA.shape[0]))
-	        result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
+            result = cv2.warpAffine(imageA, affine_matrix, (imageA.shape[1] + imageB.shape[1], imageA.shape[0]))
+            #result = cv2.warpPerspective(imageA, H, (imageA.shape[1] + imageB.shape[1], imageA.shape[0]))
+            result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
         elif orientation == 'vertical':
-            result = cv2.warpPerspective(imageA, H, (imageA.shape[1], imageA.shape[0] + imageB.shape[0]))
+            result = cv2.warpAffine(imageA, affine_matrix, (imageA.shape[1], imageA.shape[0] + imageB.shape[0]))
             result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
-
-        elif orientation == 'diagonal':
-            result = cv2.warpPerspective(imageA, H, (imageA.shape[1] + imageB.shape[1], imageA.shape[0] + imageB.shape[0]))
-            result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
-        elif orientation == 'centre':
-            result = cv2.warpPerspective(imageA, H, (4096, 4096))
-            #result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
 
 	    # check to see if the keypoint matches should be visualized
         if showMatches:
@@ -57,10 +62,10 @@ class Stitcher:
             # return a tuple of the stitched image and the
             # visualization
 
-            return (result, vis), H, result.shape
+            return (result, vis), affine_matrix, result.shape
 
         # return the stitched image
-        return result, H, result.shape
+        return result, affine_matrix, result.shape
 
     def detectAndDescribe(self, image):
 	    # convert the image to grayscale
@@ -129,7 +134,7 @@ class Stitcher:
 	    # initialize the output visualization image
 	    (hA, wA) = imageA.shape[:2]
 	    (hB, wB) = imageB.shape[:2]
-	    vis = np.zeros((max(hA, hB), wA + wB, 3), dtype="uint8")
+	    vis = np.zeros((max(hA, hB), wA + wB), dtype="uint8")
 	    vis[0:hA, 0:wA] = imageA
 	    vis[0:hB, wA:] = imageB
 
@@ -141,7 +146,7 @@ class Stitcher:
 			    # draw the match
 			    ptA = (int(kpsA[queryIdx][0]), int(kpsA[queryIdx][1]))
 			    ptB = (int(kpsB[trainIdx][0]) + wA, int(kpsB[trainIdx][1]))
-			    cv2.line(vis, ptA, ptB, (0, 255, 0), 1)
+			    cv2.line(vis, ptA, ptB, 255, 1)
 
 	    # return the visualization
 	    return vis
