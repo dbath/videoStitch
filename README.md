@@ -20,6 +20,10 @@ Generate a video from each camera recorded at ~1fps with a checkerboard pattern 
       
 2. Undistort videos
 
+<p align="center">
+  <img src=https://github.com/dbath/videoStitch/blob/master/checkercal.png>
+  <figcaption> Before undistortion, the edges of the tank are slightly curved (left). We capture checkerboard patterns distributed around the image to generate the calibration matrix (centre). The resulting image is undistorted (compare the sides of the tank) (right). </figcaption>
+</p>
 Batch process undistortion of all videos containing a specified handle by calling: 
 
     python undistort.py --handle='your_handle_here'
