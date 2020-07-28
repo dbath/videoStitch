@@ -140,13 +140,15 @@ if __name__ == "__main__":
 
     def setFN():
         global filename
-        filename = fd.askopenfilename(title="select image or video")
+        filename = fd.askopenfilename(title="select image or video",
+                                      initialdir='/Users/bathd/videoStitch/blob')
         print('file:', filename)
         return filename
 
     def setBKG():
         global bkg
-        bkg = fd.askopenfilename(title="select image or video")
+        bkg = fd.askopenfilename(title="select image or video",
+                                      initialdir='/Users/bathd/videoStitch/blob')
         print('background:', bkg)
         return bkg   
 
@@ -167,10 +169,11 @@ if __name__ == "__main__":
     #optionally enter bkg. default uses adaptive thresholds
     bkg = StringVar()
     bkg.set('Not-assigned')
+    bkg = bkg.get()
     lblBKG = Label(gui, text='Background File').grid(row = 1, column = 0, 
                                                      padx = 0, pady = 10)
-    butBKG = Button(gui,text='Select', command=setBKG).grid(row = 1, column = 1, 
-                                                            padx = 0, pady = 10)
+    butBKG = Button(gui,text='Select', command=setBKG)
+    butBKG.grid(row = 1, column = 1,  padx = 0, pady = 10)
 
     #set width of image in cm
     width = StringVar()
@@ -201,12 +204,14 @@ if __name__ == "__main__":
     
     MINMAX_BLOB_AREA = (float(min_area.get()), float(max_area.get()))
  
-   
+    print(filename, '\n', bkg)
     
     if filename.split('.')[-1] == 'mp4': 
         vid = cv2.VideoCapture(filename)
         if bkg != "Not-assigned":
-            bkg = createBackgroundFromVideo(vid)
+            _bkg = createBackgroundFromVideo(vid)
+        else:
+            _bkg = "Not-assigned"
         count, img, maxframe = getMaxCount(vid, bkg=bkg)
         print("Maximum count (", str(count),") found in frame: ", str(maxframe))
         blobs = get_contours(binarize(img))
@@ -214,8 +219,8 @@ if __name__ == "__main__":
     else:
         img = cv2.imread(filename)
         if bkg != "Not-assigned":
-            bkg = cv2.imread(bkg)
-            img = img-bkg
+            _bkg = cv2.imread(bkg)
+            img = img-_bkg
         blobs = get_contours(binarize(img))
         count = len(blobs)
     print("detected ", str(count), "objects.")
