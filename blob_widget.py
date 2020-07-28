@@ -98,7 +98,7 @@ def createBackgroundFromVideo(vid):
         return stats.mode(img_array, axis=2)[0][:,:,0]
     except:
         print("unable to use scipy.stats.mode. using max instead")
-        return np.max(img_array, axis=2)[:,:,0]
+        return np.max(img_array, axis=2)
 
 def getMaxCount(vid, bkg="Not-assigned"):
     """takes cv2 video instance, returns max number of blobs. 
