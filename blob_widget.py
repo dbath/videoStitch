@@ -212,7 +212,7 @@ if __name__ == "__main__":
             _bkg = createBackgroundFromVideo(vid)
         else:
             _bkg = "Not-assigned"
-        count, img, maxframe = getMaxCount(vid, bkg=bkg)
+        count, img, maxframe = getMaxCount(vid, bkg=_bkg)
         print("Maximum count (", str(count),") found in frame: ", str(maxframe))
         blobs = get_contours(binarize(img))
     
